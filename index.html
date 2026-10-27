@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>IPL Stats Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: scoreboard masthead, 2008-2024 highlights built from the real Kaggle files, then an upload-driven match explorer. */
+:root{
+  --bg:#EDF0EC;--surface:#F8FAF7;--fg:#14201B;--muted:#586961;--line:#D1D9D2;
+  --accent:#B3261E;--on-accent:#FFFFFF;--pitch:#2F6B4F;--pitch-soft:#D3E5DA;--flag-bg:#F6E7C8;--flag-fg:#5C4310;
+  --font-display:'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+  --font-body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1512;--surface:#16201B;--fg:#E8EFEA;--muted:#9AAEA3;--line:#2A3A32;
+  --accent:#F0645C;--on-accent:#1A0907;--pitch:#5DBB8A;--pitch-soft:#1F3328;--flag-bg:#3A2F14;--flag-fg:#F1D99A;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1512;--surface:#16201B;--fg:#E8EFEA;--muted:#9AAEA3;--line:#2A3A32;
+  --accent:#F0645C;--on-accent:#1A0907;--pitch:#5DBB8A;--pitch-soft:#1F3328;--flag-bg:#3A2F14;--flag-fg:#F1D99A;color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.5;
+  padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0;text-wrap:balance}
+h1{font-size:clamp(30px,6vw,48px);line-height:1}
+h2{font-size:18px}
+.sec{font-size:clamp(22px,4vw,28px);border-bottom:1px solid var(--line);padding-bottom:6px}
+.mast{border-bottom:3px solid var(--accent);padding-bottom:12px}
+.mast p{margin:6px 0 0;color:var(--muted);max-width:64ch}
+button,select,input{font:inherit;color:inherit}
+.btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:4px;padding:9px 14px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.msg{padding:10px 14px;border-radius:4px;background:var(--pitch-soft);color:var(--fg)}
+.msg.err{background:var(--flag-bg);color:var(--flag-fg)}
+.msg[hidden]{display:none}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0}
+.kpi span{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.kpi strong{font-family:var(--font-display);font-size:36px;line-height:1.1;font-weight:700;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.panel.wide{grid-column:1/-1}
+.note{margin:0;color:var(--muted);font-size:13px}
+.bars{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:minmax(80px,40%) 1fr auto;gap:10px;align-items:center;min-width:0}
+.bl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{height:12px;background:var(--pitch-soft);border-radius:2px;overflow:hidden}
+.track i{display:block;height:100%;background:var(--pitch)}
+.bar:first-child .track i{background:var(--accent)}
+.bv{font-variant-numeric:tabular-nums;font-weight:600;text-align:right;white-space:nowrap}
+.bv small{font-weight:400;color:var(--muted);margin-left:6px}
+.split{display:flex;height:34px;border-radius:3px;overflow:hidden;font-family:var(--font-display);font-weight:600;font-size:16px;letter-spacing:.04em}
+.split span{display:flex;align-items:center;padding:0 10px;color:var(--on-accent);white-space:nowrap;min-width:0}
+.split .f{background:var(--pitch)}
+.split .b{background:var(--accent)}
+.champs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:auto 1fr;gap:4px 16px}
+.champs li{display:contents}
+.champs .yr{font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--accent);font-variant-numeric:tabular-nums}
+.filters{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:end}
+.filters label{display:flex;flex-direction:column;gap:4px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.filters select{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:8px 10px;min-width:170px;font-size:15px;color:var(--fg);text-transform:none;letter-spacing:0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.w{font-weight:600}
+table.log{min-width:720px}
+.more{display:flex;justify-content:center;padding:12px}
+.more[hidden]{display:none}
+.empty{color:var(--muted);margin:0}
+.help{color:var(--muted);font-size:13px;margin:0}
+.help code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background:var(--pitch-soft);padding:1px 5px;border-radius:3px;color:var(--fg)}
+.uploadbox{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;justify-content:space-between;background:var(--surface);border:1px dashed var(--line);border-radius:6px;padding:14px 16px}
+.uploadbox p{margin:0;max-width:62ch}
+svg.chart{width:100%;height:auto;display:block}
+svg.chart text{fill:var(--muted);font-family:var(--font-body);font-size:11px}
+svg.chart .gl{stroke:var(--line);stroke-width:1}
+svg.chart .ln{fill:none;stroke:var(--pitch);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+svg.chart .dot{fill:var(--pitch)}
+svg.chart .hot{fill:var(--accent);stroke:none}
+svg.chart .hotln{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round}
+svg.chart text.val{fill:var(--fg);font-weight:600}
+@media (prefers-reduced-motion:no-preference){.track i{transition:width .3s ease}}
+
+html{color-scheme:light}body{margin:0}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="mast">
+    <h1>IPL Stats Board</h1>
+    <p>All 1,095 matches and 2,60,920 balls from 2008 to 2024, built from the Kaggle matches and deliveries files.</p>
+  </header>
+
+  <section class="kpis" aria-label="Dataset size">
+    <div class="kpi"><span>Matches</span><strong>1,095</strong></div>
+    <div class="kpi"><span>Seasons</span><strong>17</strong></div>
+    <div class="kpi"><span>Balls bowled</span><strong>2,60,920</strong></div>
+    <div class="kpi"><span>Toss winner won</span><strong>50.8%</strong></div>
+  </section>
+
+  <h2 class="sec">Teams and titles</h2>
+  <section class="grid">
+    <div class="panel"><h2>Titles</h2><p class="note">Winner of the Final each season.</p><ul class="champs" id="champs"></ul></div>
+    <div class="panel"><h2>Total wins</h2><p class="note">Wins, with matches played and win rate.</p><ul class="bars" id="wins"></ul></div>
+  </section>
+
+  <h2 class="sec">Scoring and toss</h2>
+  <section class="grid">
+    <div class="panel wide"><h2>Average first innings score</h2><p class="note" id="avgnote"></p><div id="avgchart"></div></div>
+    <div class="panel"><h2>Toss decision</h2><p class="note">Share of toss winners who chose to field, by season.</p><div id="tossline"></div></div>
+    <div class="panel"><h2>Toss and result</h2><div id="toss"></div></div>
+  </section>
+
+  <h2 class="sec">Players</h2>
+  <section class="grid">
+    <div class="panel"><h2>Most runs</h2><div class="tablewrap"><table id="bat"></table></div></div>
+    <div class="panel"><h2>Most wickets</h2><div class="tablewrap"><table id="bowl"></table></div></div>
+    <div class="panel"><h2>Best strike rate</h2><p class="note">Minimum 500 balls faced.</p><div class="tablewrap"><table id="sr"></table></div></div>
+    <div class="panel"><h2>Best economy</h2><p class="note">Minimum 600 balls bowled.</p><div class="tablewrap"><table id="eco"></table></div></div>
+    <div class="panel wide"><h2>Player of the match awards</h2><ul class="bars" id="pom"></ul></div>
+  </section>
+
+  <h2 class="sec">Explore matches</h2>
+  <div class="uploadbox" id="uploadbox">
+    <p>Upload <code>matches.csv</code> from the same Kaggle zip to filter by season and team, and to see the match log and venues. The file stays in your browser.</p>
+    <div>
+      <input id="csv" type="file" accept=".csv,text/csv" hidden>
+      <button class="btn" id="upload" type="button">Upload matches.csv</button>
+    </div>
+  </div>
+  <div class="msg" id="status" hidden></div>
+
+  <div id="explore" hidden>
+    <section class="filters" aria-label="Filters" style="margin-bottom:16px">
+      <label for="season">Season<select id="season"></select></label>
+      <label for="team">Team<select id="team"></select></label>
+    </section>
+    <section class="kpis" id="kpis" style="margin-bottom:16px"></section>
+    <section class="grid" style="margin-bottom:16px">
+      <div class="panel"><h2>Wins in this view</h2><ul class="bars" id="xwins"></ul></div>
+      <div class="panel"><h2>Busiest venues</h2><ul class="bars" id="venues"></ul></div>
+    </section>
+    <h2 style="margin-bottom:10px">Match log</h2>
+    <div class="tablewrap">
+      <table class="log">
+        <thead><tr><th>Date</th><th>Stage</th><th>Match</th><th>Winner</th><th>Margin</th><th>Player of the match</th><th>Venue</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+      <div class="more"><button class="btn ghost" id="more" type="button">Show more matches</button></div>
+    </div>
+  </div>
+
+  <p class="help">Team names are merged across renames: Delhi Daredevils is Delhi Capitals, Kings XI Punjab is Punjab Kings, Royal Challengers Bangalore is Royal Challengers Bengaluru. Wickets credit the bowler only for caught, bowled, lbw, stumped, caught and bowled and hit wicket.</p>
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+
+  /* ---------- real aggregates from the Kaggle files (2008-2024) ---------- */
+  var TEAMS=[['Mumbai Indians',261,144],['Chennai Super Kings',238,138],['Kolkata Knight Riders',251,131],['Royal Challengers Bengaluru',255,123],['Delhi Capitals',252,115],['Punjab Kings',246,112],['Rajasthan Royals',221,112],['Sunrisers Hyderabad',182,88],['Deccan Chargers',75,29],['Gujarat Titans',45,28],['Lucknow Super Giants',44,24],['Rising Pune Supergiant',30,15],['Gujarat Lions',30,13],['Pune Warriors',46,12],['Kochi Tuskers Kerala',14,6]];
+  var CHAMPS=[[2008,'Rajasthan Royals'],[2009,'Deccan Chargers'],[2010,'Chennai Super Kings'],[2011,'Chennai Super Kings'],[2012,'Kolkata Knight Riders'],[2013,'Mumbai Indians'],[2014,'Kolkata Knight Riders'],[2015,'Mumbai Indians'],[2016,'Sunrisers Hyderabad'],[2017,'Mumbai Indians'],[2018,'Chennai Super Kings'],[2019,'Mumbai Indians'],[2020,'Mumbai Indians'],[2021,'Chennai Super Kings'],[2022,'Gujarat Titans'],[2023,'Chennai Super Kings'],[2024,'Kolkata Knight Riders']];
+  var AVG={2008:161.0,2009:150.3,2010:164.8,2011:152.4,2012:157.5,2013:155.9,2014:163.1,2015:166.3,2016:162.6,2017:165.8,2018:172.5,2019:166.7,2020:169.5,2021:159.3,2022:171.1,2023:182.7,2024:189.6};
+  var FIELD={2008:55.2,2009:38.6,2010:35.0,2011:65.8,2012:50.0,2013:40.8,2014:68.3,2015:57.6,2016:81.7,2017:81.4,2018:83.3,2019:83.3,2020:55.0,2021:73.3,2022:79.7,2023:71.6,2024:73.2};
+  var POM=[['AB de Villiers',25],['CH Gayle',22],['RG Sharma',19],['V Kohli',18],['DA Warner',18],['MS Dhoni',17],['YK Pathan',16],['RA Jadeja',16],['SR Watson',16],['AD Russell',15]];
+  var BAT=[['V Kohli',8014,6069,708,273,132.0],['S Dhawan',6769,5326,768,153,127.1],['RG Sharma',6630,5057,599,281,131.1],['DA Warner',6567,4702,663,236,139.7],['SK Raina',5536,4046,506,204,136.8],['MS Dhoni',5243,3812,363,252,137.5],['AB de Villiers',5181,3411,414,253,151.9],['CH Gayle',4997,3346,408,359,149.3],['RV Uthappa',4954,3801,481,182,130.3],['KD Karthik',4843,3580,466,161,135.3]];
+  var BOWL=[['YS Chahal',3521,205,4602,7.84],['PP Chawla',3850,192,5108,7.96],['DJ Bravo',3120,183,4360,8.38],['B Kumar',3910,181,4929,7.56],['SP Narine',4081,180,4582,6.74],['R Ashwin',4524,180,5369,7.12],['A Mishra',3371,174,4145,7.38],['SL Malinga',2828,170,3364,7.14],['JJ Bumrah',3075,168,3743,7.30],['RA Jadeja',3829,160,4864,7.62]];
+  var SR=[['AD Russell',2488,1423,174.8],['H Klaasen',993,590,168.3],['SP Narine',1534,925,165.8],['LS Livingstone',939,578,162.5],['N Pooran',1769,1092,162.0],['RM Patidar',799,503,158.8],['GJ Maxwell',2772,1769,156.7],['V Sehwag',2728,1755,155.4],['Abhishek Sharma',1377,887,155.2],['SO Hetmyer',1243,812,153.1]];
+  var ECO=[['A Kumble',965,45,6.58],['M Muralitharan',1528,64,6.70],['SP Narine',4081,180,6.74],['DL Vettori',777,28,6.79],['Rashid Khan',2872,149,6.83],['J Botha',694,25,6.92],['DW Steyn',2182,97,6.94],['R Sharma',928,40,7.02],['MM Ali',758,35,7.07],['Harbhajan Singh',3416,150,7.08]];
+
+  /* ---------- static sections ---------- */
+  function bars(el,items,subFn){
+    if(!items.length){el.innerHTML='<li class="empty">No data in this view.</li>';return}
+    var max=items[0].v;
+    el.innerHTML=items.map(function(it){
+      return '<li class="bar"><span class="bl" title="'+esc(it.k)+'">'+esc(it.k)+'</span><span class="track"><i style="width:'+Math.max(2,it.v/max*100)+'%"></i></span><span class="bv">'+it.v+(subFn?'<small>'+esc(subFn(it))+'</small>':'')+'</span></li>';
+    }).join('');
+  }
+  function table(el,heads,rows){
+    el.innerHTML='<thead><tr>'+heads.map(function(h,i){return '<th'+(i?' class="n"':'')+'>'+h+'</th>'}).join('')+'</tr></thead><tbody>'
+      +rows.map(function(r){return '<tr>'+r.map(function(c,i){return i?'<td class="n">'+c+'</td>':'<td class="w">'+esc(c)+'</td>'}).join('')+'</tr>'}).join('')+'</tbody>';
+  }
+  var fmt=function(n){return n.toLocaleString('en-IN')};
+
+  $('champs').innerHTML=CHAMPS.map(function(c){return '<li><span class="yr">'+c[0]+'</span><span>'+esc(c[1])+'</span></li>'}).join('');
+  var played={};TEAMS.forEach(function(t){played[t[0]]=t[1]});
+  bars($('wins'),TEAMS.map(function(t){return {k:t[0],v:t[2]}}),function(it){return 'of '+played[it.k]+' · '+Math.round(it.v/played[it.k]*1000)/10+'%'});
+
+  function lineChart(el,data,o){
+    var years=Object.keys(data).map(Number).sort(function(a,b){return a-b});
+    var W=640,H=o.h||240,L=40,R=16,T=18,B=28;
+    var vals=years.map(function(y){return data[y]});
+    var lo=o.min,hi=o.max,step=o.step;
+    var x=function(i){return L+i*(W-L-R)/(years.length-1)};
+    var y=function(v){return T+(hi-v)/(hi-lo)*(H-T-B)};
+    var s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.label)+'">';
+    for(var g=lo;g<=hi+0.001;g+=step){s+='<line class="gl" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(g)+'" y2="'+y(g)+'"/><text x="'+(L-6)+'" y="'+(y(g)+4)+'" text-anchor="end">'+g+'</text>'}
+    years.forEach(function(yr,i){if(i%2===0||years.length<10)s+='<text x="'+x(i)+'" y="'+(H-8)+'" text-anchor="middle">'+yr+'</text>'});
+    var pts=vals.map(function(v,i){return x(i)+','+y(v)}).join(' ');
+    s+='<polyline class="ln" points="'+pts+'"/>';
+    vals.forEach(function(v,i){s+='<circle class="dot" cx="'+x(i)+'" cy="'+y(v)+'" r="3"/>'});
+    var li=vals.length-1;
+    s+='<circle class="hot" cx="'+x(li)+'" cy="'+y(vals[li])+'" r="5"/><text class="val" x="'+(x(li)-8)+'" y="'+(y(vals[li])-10)+'" text-anchor="end">'+vals[li]+o.unit+'</text>';
+    if(o.mark!=null){var mi=years.indexOf(o.mark);if(mi>-1)s+='<circle class="hot" cx="'+x(mi)+'" cy="'+y(vals[mi])+'" r="5"/><text class="val" x="'+x(mi)+'" y="'+(y(vals[mi])+18)+'" text-anchor="middle">'+vals[mi]+o.unit+'</text>'}
+    el.innerHTML=s+'</svg>';
+  }
+  lineChart($('avgchart'),AVG,{min:140,max:200,step:20,unit:'',label:'Average first innings score by season, 2008 to 2024',mark:2022});
+  $('avgnote').textContent='Between 150 and 172 from 2008 to 2022, then 182.7 in 2023 and 189.6 in 2024. The Impact Player rule arrived in 2023 and may be one reason, but this data alone cannot show that.';
+  lineChart($('tossline'),FIELD,{min:20,max:100,step:20,unit:'%',label:'Percent of toss winners choosing to field, by season',h:220});
+  $('toss').innerHTML='<div class="split" role="img" aria-label="Toss winner won 50.8 percent of matches"><span class="f" style="width:50.8%">Won 50.8%</span><span class="b" style="width:49.2%">Lost 49.2%</span></div>'
+    +'<p class="note" style="margin-top:6px">Winning the toss is close to a coin flip.</p>'
+    +'<table style="margin-top:6px"><thead><tr><th>Toss winner chose</th><th class="n">Matches</th><th class="n">Won match</th></tr></thead><tbody><tr><td class="w">Field</td><td class="n">700</td><td class="n">53.9%</td></tr><tr><td class="w">Bat</td><td class="n">390</td><td class="n">45.4%</td></tr></tbody></table>'
+    +'<p class="note">Fielding first goes with more wins, but teams also pick based on conditions, so the toss choice alone does not explain it.</p>';
+
+  table($('bat'),['Batter','Runs','Balls','4s','6s','SR'],BAT.map(function(r){return [r[0],fmt(r[1]),fmt(r[2]),r[3],r[4],r[5].toFixed(1)]}));
+  table($('bowl'),['Bowler','Wkts','Balls','Runs','Econ'],BOWL.map(function(r){return [r[0],r[2],fmt(r[1]),fmt(r[3]),r[4].toFixed(2)]}));
+  table($('sr'),['Batter','SR','Runs','Balls'],SR.map(function(r){return [r[0],r[3].toFixed(1),fmt(r[1]),fmt(r[2])]}));
+  table($('eco'),['Bowler','Econ','Wkts','Balls'],ECO.map(function(r){return [r[0],r[3].toFixed(2),r[2],fmt(r[1])]}));
+  bars($('pom'),POM.map(function(p){return {k:p[0],v:p[1]}}));
+
+  /* ---------- match explorer (upload) ---------- */
+  var TEAM_MAP={'Delhi Daredevils':'Delhi Capitals','Kings XI Punjab':'Punjab Kings','Royal Challengers Bangalore':'Royal Challengers Bengaluru','Rising Pune Supergiants':'Rising Pune Supergiant'};
+  var tm=function(t){return TEAM_MAP[t]||t};
+
+  function parseCSV(text){
+    if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);
+    var rows=[],row=[],f='',q=false,i=0,c;
+    for(;i<text.length;i++){
+      c=text[i];
+      if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+      else if(c==='"')q=true;
+      else if(c===','){row.push(f);f=''}
+      else if(c==='\n'){row.push(f);rows.push(row);row=[];f=''}
+      else if(c!=='\r')f+=c;
+    }
+    if(f!==''||row.length){row.push(f);rows.push(row)}
+    return rows.filter(function(r){return r.some(function(x){return x.trim()!==''})});
+  }
+  var ALIAS={id:['id','matchid'],season:['season'],date:['date','matchdate'],city:['city'],type:['matchtype'],
+    t1:['team1','teama'],t2:['team2','teamb'],winner:['winner','matchwinner'],tossWinner:['tosswinner'],tossDec:['tossdecision'],
+    pom:['playerofmatch'],venue:['venue','stadium'],result:['result'],margin:['resultmargin','winbyruns']};
+  function normalize(rows){
+    var head=rows[0].map(function(h){return h.toLowerCase().replace(/[^a-z0-9]/g,'')});
+    var idx={};
+    Object.keys(ALIAS).forEach(function(k){for(var j=0;j<ALIAS[k].length;j++){var p=head.indexOf(ALIAS[k][j]);if(p>-1){idx[k]=p;return}}});
+    if(idx.t1==null||idx.t2==null)throw new Error('Could not find team1 and team2 columns in this file.');
+    var val=function(r,k){return idx[k]==null?'':String(r[idx[k]]||'').trim()};
+    var clean=function(s){return /^(na|nan|null|none|n\/a)$/i.test(s)?'':s};
+    var out=[];
+    rows.slice(1).forEach(function(r,n){
+      var t1=val(r,'t1'),t2=val(r,'t2');
+      if(!t1||!t2)return;
+      var date=val(r,'date'),y=date.match(/(19|20)\d\d/),season=y?y[0]:(val(r,'season').match(/\d{4}/)||['Unknown'])[0];
+      var res=clean(val(r,'result')).toLowerCase(),mg=clean(val(r,'margin')).replace(/\.0+$/,''),margin='';
+      if(res==='runs'||res==='wickets')margin=mg?mg+' '+res:res;
+      else if(res==='tie')margin='Tie';
+      else if(res==='no result')margin='No result';
+      else if(mg)margin=mg;
+      out.push({season:season,date:date,type:clean(val(r,'type')),t1:tm(t1),t2:tm(t2),winner:tm(clean(val(r,'winner'))),
+        tossWinner:tm(clean(val(r,'tossWinner'))),pom:clean(val(r,'pom')),venue:clean(val(r,'venue')),margin:margin,_n:n});
+    });
+    if(!out.length)throw new Error('The file has no match rows.');
+    return out;
+  }
+
+  var DATA=[],shown=12,seasonSel=$('season'),teamSel=$('team');
+  function fillFilters(){
+    var seasons=[],teams={};
+    DATA.forEach(function(m){if(seasons.indexOf(m.season)<0)seasons.push(m.season);teams[m.t1]=1;teams[m.t2]=1});
+    seasons.sort();
+    seasonSel.innerHTML='<option value="">All seasons</option>'+seasons.map(function(s){return '<option>'+esc(s)+'</option>'}).join('');
+    teamSel.innerHTML='<option value="">All teams</option>'+Object.keys(teams).sort().map(function(t){return '<option>'+esc(t)+'</option>'}).join('');
+  }
+  function filtered(){var s=seasonSel.value,t=teamSel.value;return DATA.filter(function(m){return (!s||m.season===s)&&(!t||m.t1===t||m.t2===t)})}
+  function count(list,fn){var o={};list.forEach(function(m){var k=fn(m);if(k)o[k]=(o[k]||0)+1});return Object.keys(o).map(function(k){return {k:k,v:o[k]}}).sort(function(a,b){return b.v-a.v||a.k.localeCompare(b.k)})}
+  function render(){
+    var list=filtered(),decided=list.filter(function(m){return m.winner});
+    var played2={};list.forEach(function(m){played2[m.t1]=(played2[m.t1]||0)+1;played2[m.t2]=(played2[m.t2]||0)+1});
+    var wt=list.filter(function(m){return m.tossWinner&&m.winner}),tw=wt.filter(function(m){return m.tossWinner===m.winner}).length;
+    $('kpis').innerHTML=[['Matches',list.length],['Seasons',new Set(list.map(function(m){return m.season})).size],['With a result',decided.length],['Toss winner won',wt.length?Math.round(tw/wt.length*100)+'%':'n/a']]
+      .map(function(k){return '<div class="kpi"><span>'+k[0]+'</span><strong>'+k[1]+'</strong></div>'}).join('');
+    bars($('xwins'),count(decided,function(m){return m.winner}).slice(0,10),function(it){return 'of '+(played2[it.k]||0)});
+    bars($('venues'),count(list,function(m){return m.venue}).slice(0,8));
+    var sorted=list.slice().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b._n-a._n});
+    $('log').innerHTML=sorted.slice(0,shown).map(function(m){
+      return '<tr><td class="n">'+esc(m.date||m.season)+'</td><td>'+esc(m.type)+'</td><td>'+esc(m.t1)+' v '+esc(m.t2)+'</td><td class="w">'+esc(m.winner||'No result')+'</td><td>'+esc(m.margin)+'</td><td>'+esc(m.pom)+'</td><td>'+esc(m.venue)+'</td></tr>';
+    }).join('')||'<tr><td colspan="7" class="empty">No matches for this filter.</td></tr>';
+    $('more').parentNode.hidden=shown>=sorted.length;
+  }
+  seasonSel.addEventListener('change',function(){shown=12;render()});
+  teamSel.addEventListener('change',function(){shown=12;render()});
+  $('more').addEventListener('click',function(){shown+=20;render()});
+  $('upload').addEventListener('click',function(){$('csv').click()});
+  $('csv').addEventListener('change',function(e){
+    var f=e.target.files&&e.target.files[0];if(!f)return;
+    var st=$('status'),rd=new FileReader();
+    rd.onload=function(){
+      try{
+        DATA=normalize(parseCSV(String(rd.result)));shown=12;fillFilters();render();
+        $('explore').hidden=false;
+        st.className='msg';st.textContent='Loaded '+DATA.length+' matches from '+f.name+'.';st.hidden=false;
+      }catch(err){
+        st.className='msg err';st.textContent=err.message+' Check that this is matches.csv, not deliveries.csv.';st.hidden=false;
+      }
+    };
+    rd.onerror=function(){st.className='msg err';st.textContent='Could not read that file.';st.hidden=false};
+    rd.readAsText(f);
+    e.target.value='';
+  });
+})();
+</script>
+
+</body>
+</html>
